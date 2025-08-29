@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Potwierdzenie</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 0; padding: 24px; }
+    .wrap { max-width: 880px; margin: 0 auto; }
+    h1 { margin: 0 0 12px; font-size: 24px; }
+    p  { margin: 0 0 16px; }
+    iframe { width: 100%; height: 720px; border: 0; }
+    .err { background: #fee; padding: 12px; border-radius: 8px; }
+    .muted { opacity: .7; }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0 20px; }
+    input, button { padding: 10px 12px; font: inherit; }
+    input { flex: 1 1 240px; }
+    button { cursor: pointer; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Potwierdzenie</h1>
+    <p class="muted">Ta strona ukrywa pasek Apps Script. Wartości P1/P2/P3 widać tylko w linku, nie w formularzu.</p>
+
+    <div id="builder" class="row">
+      <input id="p1" placeholder="P1 – firma">
+      <input id="p2" placeholder="P2 – obiekt">
+      <input id="p3" placeholder="P3 – osoba kontaktowa">
+      <button id="apply">Użyj wartości</button>
+    </div>
+
+    <div id="msg"></div>
+    <iframe id="frame" allow="clipboard-write *"></iframe>
+  </div>
+
+  <script>
+    // 1) USTAW SWÓJ WEB APP /exec:
+    const WEBAPP = "https://script.google.com/macros/s/AKfycbyGW4PkDJBcwnCW7juMwKWiqExsadBmQb6SQzk8REA-8apyVrfYvV6zTRjZNdciFbR4/exec";
+
+    // Twoje kody pól:
+    const E1 = "entry.1458823801"; // P1
+    const E2 = "entry.234356277";  // P2
+    const E3 = "entry.2074999142"; // P3
+
+    const qs = new URLSearchParams(location.search);
+    // Akceptujemy zarówno p1/p2/p3 jak i entry.x:
+    const P1 = qs.get("p1") || qs.get(E1) || "";
+    const P2 = qs.get("p2") || qs.get(E2) || "";
+    const P3 = qs.get("p3") || qs.get(E3) || "";
+
+    const frame = document.getElementById("frame");
+    const msg   = document.getElementById("msg");
+
+    function buildSrc(p1, p2, p3) {
+      const u = new URL(WEBAPP);
+      u.searchParams.set(E1, p1);
+      u.searchParams.set(E2, p2);
+      u.searchParams.set(E3, p3);
+      return u.toString();
+    }
+
+    function setIframe(p1, p2, p3) {
+      if (!p1 || !p2 || !p3) {
+        msg.innerHTML = '<div class="err">Brakuje wartości P1/P2/P3 w adresie. Uzupełnij pola powyżej i kliknij „Użyj wartości”.</div>';
+        return;
+      }
+      msg.textContent = "";
+      frame.src = buildSrc(p1, p2, p3);
+
+      // Estetyka: ukryj parametry P1/P2/P3 z paska adresu tej strony
+      const clean = new URL(location.href);
+      clean.search = ""; // usuń query
+      history.replaceState(null, "", clean.toString());
+    }
+
+    // Zainicjalizuj pola buildera:
+    document.getElementById("p1").value = P1;
+    document.getElementById("p2").value = P2;
+    document.getElementById("p3").value = P3;
+    document.getElementById("apply").onclick = () => {
+      const p1 = document.getElementById("p1").value.trim();
+      const p2 = document.getElementById("p2").value.trim();
+      const p3 = document.getElementById("p3").value.trim();
+      setIframe(p1, p2, p3);
+    };
+
+    // Jeśli przyszliśmy już z parametrami w URL — ładuj od razu:
+    if (P1 || P2 || P3) setIframe(P1, P2, P3);
+  </script>
+</body>
+</html>
