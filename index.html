@@ -1,143 +1,55 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="pl">
 <head>
-  <meta charset="utf-8">
+  <meta charset="UTF-8">
   <title>POTWIERDZENIE</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <style>
-    body { font: 16px/1.5 system-ui, Arial, sans-serif; padding: 24px; max-width: 720px; margin: 0 auto; background:#fafafa; }
-    h1 { margin: 0 0 14px; font-size: 22px; }
-    .card { border: 1px solid #e6e6e6; border-radius: 12px; padding: 16px 18px; background: #fff; }
-    .row { margin: 8px 0; }
-    .val { font-weight: 600; }
-    .actions { margin-top: 18px; }
-    button { padding: 10px 16px; border-radius: 8px; border: 0; background:#1a73e8; color:#fff; font-weight:600; cursor:pointer; }
-    button:disabled { opacity:.6; cursor:default; }
-    .ok  { margin-top: 16px; color:#0a7; display:none; }
-    .err { margin-top: 16px; color:#c00; display:none; }
-    .muted { color:#666; font-size: .95em; margin-top: 8px; }
-  </style>
+  <!-- Biblioteka stylów -->
+  <link rel="stylesheet" href="https://okeciepark-dotcom.github.io/library/style.css">
+  <script defer src="https://okeciepark-dotcom.github.io/library/config.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const cfg = window.OP_CONFIG || {};
+      // Logo
+      const logo = document.getElementById("op-logo");
+      if (logo && cfg.logoUrl) logo.src = cfg.logoUrl;
+      // Stopka
+      document.getElementById("op-org").textContent   = cfg.orgName;
+      document.getElementById("op-mail").textContent  = cfg.orgEmail;
+      document.getElementById("op-mail").href         = "mailto:" + cfg.orgEmail;
+      document.getElementById("op-privacy").href      = cfg.privacyUrl;
+      document.documentElement.classList.add("ready");
+    });
+  </script>
 </head>
 <body>
-  <h1>POTWIERDZENIE</h1>
 
-  <div class="card">
-    <div class="row">
-      Potwierdzasz, że lista kontaktów firmy <span class="val" id="vFirma">–</span>
-      dla obiektu <span class="val" id="vObiekt">–</span> jest aktualna.
+  <!-- Logo -->
+  <header>
+    <img id="op-logo" class="header__logo" alt="Logo Okęcie Park" data-hide-until-ready>
+  </header>
+
+  <!-- Treść główna -->
+  <main>
+    <div class="form-card">
+      <h1>POTWIERDZENIE</h1>
+      <p>
+        Potwierdzasz, że lista kontaktów firmy <strong>Firma</strong>  
+        dla obiektu <strong>Obiekt</strong> jest aktualna.  
+      </p>
+      <p>
+        Osoba pierwszego kontaktu: <strong>Osoba kontaktowa</strong><br>
+        e-mail: <strong>Adres e-mail</strong>
+      </p>
+      <button type="submit">Potwierdź</button>
     </div>
-    <div class="row">
-      Osoba pierwszego kontaktu: <span class="val" id="vOsoba">–</span>
-      &nbsp; e-mail: <span class="val" id="vEmail">–</span>
-    </div>
-    <div class="muted">Po kliknięciu „potwierdź” zapis trafi do powiązanego Arkusza Google.</div>
-  </div>
+  </main>
 
-  <!-- Ukryty iframe do „bezprzeładowaniowego” submitu -->
-  <iframe name="hidden_iframe" id="hidden_iframe" style="display:none;"></iframe>
+  <!-- Stopka -->
+  <footer data-hide-until-ready>
+    <p>© <span id="op-org"></span></p>
+    <p>Kontakt: <a id="op-mail" href="#"></a></p>
+    <p><a id="op-privacy" href="#" target="_blank" rel="noopener">Polityka prywatności</a></p>
+  </footer>
 
-  <!-- FORMULARZ POST do Google Forms -->
-  <form id="confForm"
-        class="actions"
-        action="https://docs.google.com/forms/d/15flx1SBwjdQnomWlGlsC0K-Tx1cgs59ksvwd49aI5-A/formResponse"
-        method="POST"
-        target="hidden_iframe">
-
-    <!-- Ukryte pola: wartości nadamy z parametrów URL -->
-    <input type="hidden" name="entry.1713595308" id="idAkt">    <!-- ID_Aktualizacja -->
-    <input type="hidden" name="entry.1276633088" id="inpFirma"> <!-- Firma -->
-    <input type="hidden" name="entry.1492857322" id="inpObiekt"><!-- Obiekt -->
-    <input type="hidden" name="entry.1906223239" id="inpOsoba"> <!-- Osoba kontaktowa -->
-    <input type="hidden" name="entry.510307459"  id="inpEmail"> <!-- Adres e-mail -->
-
-    <!-- techniczne (nieszkodliwe) -->
-    <input type="hidden" name="fvv" value="1">
-    <input type="hidden" name="partialResponse" value="">
-    <input type="hidden" name="pageHistory" value="0">
-
-    <button type="submit" id="btnConfirm">potwierdź</button>
-  </form>
-
-  <div id="ok"  class="ok">Wysłano. Dziękujemy!</div>
-  <div id="bad" class="err">Nie udało się wysłać. Odśwież stronę i spróbuj ponownie.</div>
-
-  <script>
-    // Mapujemy nazwy z linku → entry.*; wspieramy zarówno „czytelne” nazwy jak i bezpośrednie entry.x
-    const map = {
-      idAktualizacja: ['ID_Aktualizacja', 'entry.1713595308'],
-      firma:           ['Firma',           'entry.1276633088'],
-      obiekt:          ['Obiekt',          'entry.1492857322'],
-      osoba:           ['Osoba kontaktowa','entry.1906223239'],
-      email:           ['Adres e-mail',    'entry.510307459']
-    };
-
-    function qs(name) {
-      const u = new URL(window.location.href);
-      return u.searchParams.get(name) || '';
-    }
-
-    function firstNonEmpty(arr){ for (const k of arr){ const v = qs(k); if (v) return v; } return ''; }
-
-    (function prefill() {
-      const vId     = firstNonEmpty(map.idAktualizacja);
-      const vFirma  = firstNonEmpty(map.firma);
-      const vObiekt = firstNonEmpty(map.obiekt);
-      const vOsoba  = firstNonEmpty(map.osoba);
-      const vEmail  = firstNonEmpty(map.email);
-
-      // Wyświetlenie
-      document.getElementById('vFirma').textContent  = vFirma || '—';
-      document.getElementById('vObiekt').textContent = vObiekt || '—';
-      document.getElementById('vOsoba').textContent  = vOsoba || '—';
-      document.getElementById('vEmail').textContent  = vEmail || '—';
-
-      // Ukryte inputy do POST
-      document.getElementById('idAkt').value     = vId;
-      document.getElementById('inpFirma').value  = vFirma;
-      document.getElementById('inpObiekt').value = vObiekt;
-      document.getElementById('inpOsoba').value  = vOsoba;
-      document.getElementById('inpEmail').value  = vEmail;
-    })();
-
-    // Obsługa submitu przez ukryty iframe — bez przeładowania
-    (function attachNoReloadSubmit(){
-      const form = document.getElementById('confForm');
-      const btn  = document.getElementById('btnConfirm');
-      const ok   = document.getElementById('ok');
-      const bad  = document.getElementById('bad');
-      const iframe = document.getElementById('hidden_iframe');
-
-      let submitted = false;
-      form.addEventListener('submit', function(){
-        // UX: zablokuj wielokrotne kliknięcia
-        submitted = true;
-        btn.disabled = true;
-        ok.style.display  = 'none';
-        bad.style.display = 'none';
-        // jeśli Google Forms zredirectuje w iframe, „load” się wywoła
-      });
-
-      // Gdy iframe zakończy ładowanie strony odpowiedzi — traktujemy to jako sukces
-      iframe.addEventListener('load', function(){
-        if (!submitted) return;
-        submitted = false; // zakończ cykl
-        ok.style.display  = 'block';
-        bad.style.display = 'none';
-        // Opcjonalnie: odblokuj przycisk (zostawiam zablokowany, by uniknąć duplikatów)
-        // btn.disabled = false;
-      });
-
-      // Awaryjny timeout (gdyby load nie przyszedł – bardzo rzadkie)
-      form.addEventListener('submit', function(){
-        setTimeout(function(){
-          if (!ok.style.display || ok.style.display === 'none') {
-            // jeśli do tej pory nie ma „ok”, pokaż komunikat błędu
-            bad.style.display = 'block';
-          }
-        }, 8000);
-      });
-    })();
-  </script>
 </body>
 </html>
-
