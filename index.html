@@ -1,8 +1,9 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pl">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="utf-8">
   <title>POTWIERDZENIE</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
 
   <!-- Twoja biblioteka -->
   <link rel="stylesheet" href="https://okeciepark-dotcom.github.io/library/style.css">
@@ -12,185 +13,63 @@
     .alert {display:none; margin-top:16px; padding:12px; border-radius:10px; border:1px solid #ddd}
     .alert--ok {background:#e8f5e9}
     .alert--err {background:#ffebee}
-    .hide {display:none}
+    button:disabled { opacity:.6; cursor:default; }
   </style>
-
-  <script>
-    // ======= USTAW TO: FORM_ID Twojego Google Form =======
-    const FORM_ID = "15flx1SBwjdQnomWlGlsC0K-Tx1cgs59ksvwd49aI5-A";
-    // ================================================
-
-    // Mapowanie entry.* -> id elementu w HTML (do wyświetlenia)
-    const VIEW_MAP = {
-      "entry.1276633088": "firma",  // Firma
-      "entry.1492857322": "obiekt", // Obiekt
-      "entry.1906223239": "osoba",  // Osoba kontaktowa
-      "entry.510307459" : "email",  // Adres e-mail
-      "entry.1713595308": "aktId"   // ID_Aktualizacja (ukryte)
-    };
-
-    function fillFromUrl() {
-      const params = new URLSearchParams(window.location.search);
-      for (const [entry, elId] of Object.entries(VIEW_MAP)) {
-        const val = params.get(entry);
-        if (!val) continue;
-        const el = document.getElementById(elId);
-        if (!el) continue;
-        if (elId === "email") {
-          const a = document.getElementById("emailLink");
-          if (a) { a.textContent = val; a.href = `mailto:${val}`; }
-          else   { el.textContent = val; }
-        } else if (el.tagName === "INPUT") {
-          el.value = val; // dla ukrytego ID
-        } else {
-          el.textContent = val;
-        }
-      }
-    }
-
-    async function submitToGoogleForms(payload) {
-      // Wysyłamy jak z formularza: application/x-www-form-urlencoded
-      const endpoint = `https://docs.google.com/forms/d/e/${FORM_ID}/formResponse`;
-      const body = new URLSearchParams(payload).toString();
-
-      // Uwaga: Google Forms ma CORS; używamy no-cors (brak czytelnej odpowiedzi to normalne).
-      // Po udanej wysyłce i tak pokazujemy potwierdzenie.
-      await fetch(endpoint, {
-        method: "POST",
-        mode: "no-cors",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body
-      });
-      // Jeśli fetch się nie wywali wyjątkiem w JS, traktujemy jako sukces.
-    }
-
-    function buildPayloadFromUrl() {
-      const params = new URLSearchParams(window.location.search);
-
-      // Zbierz dokładnie te entry.*, które chcesz wysłać
-      const entries = [
-        "entry.1276633088", // Firma
-        "entry.1492857322", // Obiekt
-        "entry.1906223239", // Osoba kontaktowa
-        "entry.510307459",  // Adres e-mail
-        "entry.1713595308"  // ID_Aktualizacja
-      ];
-
-      const payload = {};
-      for (const key of entries) {
-        const v = params.get(key);
-        if (v !== null) payload[key] = v;
-      }
-
-      // (opcjonalnie) możesz dodać submit param, ale nie jest wymagany:
-      // payload["submit"] = "Submit";
-
-      return payload;
-    }
-
-    function setLogoAndFooter() {
-      const cfg = window.OP_CONFIG || {};
-      const logo = document.getElementById("op-logo");
-      if (logo && cfg.logoUrl) logo.src = cfg.logoUrl;
-      const org  = document.getElementById("op-org");
-      const mail = document.getElementById("op-mail");
-      const priv = document.getElementById("op-privacy");
-      if (org && cfg.orgName) org.textContent = cfg.orgName;
-      if (mail && cfg.orgEmail) { mail.textContent = cfg.orgEmail; mail.href = `mailto:${cfg.orgEmail}`; }
-      if (priv && cfg.privacyUrl) priv.href = cfg.privacyUrl;
-
-      document.documentElement.classList.add("ready");
-    }
-
-    function showAlert(ok, text) {
-      const okBox  = document.getElementById("alert-ok");
-      const errBox = document.getElementById("alert-err");
-      if (ok) {
-        if (errBox) errBox.style.display = "none";
-        if (okBox)  { okBox.textContent = text; okBox.style.display = "block"; }
-      } else {
-        if (okBox)  okBox.style.display = "none";
-        if (errBox) { errBox.textContent = text; errBox.style.display = "block"; }
-      }
-    }
-
-    function disableButton(disabled) {
-      const btn = document.getElementById("btn-confirm");
-      if (!btn) return;
-      btn.disabled = disabled;
-      btn.textContent = disabled ? "Wysyłanie..." : "Potwierdź";
-    }
-
-    document.addEventListener("DOMContentLoaded", () => {
-      setLogoAndFooter();
-      fillFromUrl();
-
-      const btn = document.getElementById("btn-confirm");
-      btn?.addEventListener("click", async () => {
-        // Walidacja minimalna
-        if (FORM_ID === "WSTAW_TUTAJ_SWOJ_FORM_ID") {
-          showAlert(false, "Brak FORM_ID. Uzupełnij identyfikator formularza Google w kodzie.");
-          return;
-        }
-
-        const payload = buildPayloadFromUrl();
-        // Sprawdź wymagane pola (przykładowo firma, obiekt, email)
-        if (!payload["entry.1276633088"] || !payload["entry.1492857322"] || !payload["entry.510307459"]) {
-          showAlert(false, "Brak wymaganych danych w linku. Upewnij się, że używasz poprawnego URL.");
-          return;
-        }
-
-        try {
-          disableButton(true);
-          await submitToGoogleForms(payload);
-          showAlert(true, "Dziękujemy! Potwierdzenie zostało zapisane.");
-          // (opcjonalnie) zablokuj ponowną wysyłkę:
-          // document.getElementById("btn-confirm").classList.add("hide");
-        } catch (e) {
-          showAlert(false, "Nie udało się wysłać potwierdzenia. Spróbuj ponownie.");
-          console.error(e);
-        } finally {
-          disableButton(false);
-        }
-      });
-    });
-  </script>
 </head>
 <body>
 
   <!-- Logo -->
   <header>
-    <img id="op-logo" class="header__logo" alt="Logo Okęcie Park" data-hide-until-ready>
+    <img id="op-logo" class="header__logo" alt="Logo" data-hide-until-ready>
   </header>
 
-  <!-- Treść -->
   <main>
     <div class="form-card">
       <h1>POTWIERDZENIE</h1>
 
       <p>
         Potwierdzasz, że lista kontaktów firmy
-        <strong id="firma">Firma</strong>
+        <strong id="firma">—</strong>
         dla obiektu
-        <strong id="obiekt">Obiekt</strong>
+        <strong id="obiekt">—</strong>
         jest aktualna.
       </p>
 
       <p style="margin-top:10px">
         Osoba pierwszego kontaktu:
-        <strong id="osoba">Osoba kontaktowa</strong><br>
+        <strong id="osoba">—</strong><br>
         e-mail:
-        <strong id="email"><a id="emailLink" href="#">Adres e-mail</a></strong>
+        <strong id="email"><a id="emailLink" href="#">—</a></strong>
       </p>
 
-      <!-- Ukryte pole na ID aktualizacji (jeśli potrzebujesz gdzieś użyć) -->
-      <input id="aktId" type="hidden" />
+      <!-- Ukryty iframe do submitu bez przeładowania -->
+      <iframe name="hidden_iframe" id="hidden_iframe" style="display:none;"></iframe>
 
-      <button id="btn-confirm" type="button" style="margin-top:20px">Potwierdź</button>
+      <!-- FORMULARZ POST do Google Forms (UWAGA: podmień action na swój formularz jeśli inny) -->
+      <form id="confForm"
+            class="actions"
+            action="https://docs.google.com/forms/d/15flx1SBwjdQnomWlGlsC0K-Tx1cgs59ksvwd49aI5-A/formResponse"
+            method="POST"
+            target="hidden_iframe">
+
+        <!-- Ukryte pola uzupełniane z URL -->
+        <input type="hidden" name="entry.1713595308" id="idAkt">    <!-- ID_Aktualizacja -->
+        <input type="hidden" name="entry.1276633088" id="inpFirma"> <!-- Firma -->
+        <input type="hidden" name="entry.1492857322" id="inpObiekt"><!-- Obiekt -->
+        <input type="hidden" name="entry.1906223239" id="inpOsoba"> <!-- Osoba kontaktowa -->
+        <input type="hidden" name="entry.510307459"  id="inpEmail"> <!-- Adres e-mail -->
+
+        <!-- Pola techniczne (jak w działającej wersji) -->
+        <input type="hidden" name="fvv" value="1">
+        <input type="hidden" name="partialResponse" value="">
+        <input type="hidden" name="pageHistory" value="0">
+
+        <button type="submit" id="btnConfirm">Potwierdź</button>
+      </form>
 
       <!-- Komunikaty -->
-      <div id="alert-ok"  class="alert alert--ok"  role="status" aria-live="polite"></div>
-      <div id="alert-err" class="alert alert--err" role="alert"></div>
+      <div id="alert-ok"  class="alert alert--ok"  role="status" aria-live="polite">Wysłano. Dziękujemy!</div>
+      <div id="alert-err" class="alert alert--err" role="alert">Nie udało się wysłać. Odśwież i spróbuj ponownie.</div>
     </div>
   </main>
 
@@ -201,5 +80,90 @@
     <p><a id="op-privacy" href="#" target="_blank" rel="noopener">Polityka prywatności</a></p>
   </footer>
 
+  <script>
+    // 1) Logo i stopka z biblioteki
+    document.addEventListener("DOMContentLoaded", () => {
+      const cfg = window.OP_CONFIG || {};
+      const logo = document.getElementById("op-logo");
+      if (logo && cfg.logoUrl) logo.src = cfg.logoUrl;
+      const org  = document.getElementById("op-org");
+      const mail = document.getElementById("op-mail");
+      const priv = document.getElementById("op-privacy");
+      if (org && cfg.orgName) org.textContent = cfg.orgName;
+      if (mail && cfg.orgEmail) { mail.textContent = cfg.orgEmail; mail.href = `mailto:${cfg.orgEmail}`; }
+      if (priv && cfg.privacyUrl) priv.href = cfg.privacyUrl;
+      document.documentElement.classList.add("ready");
+    });
+
+    // 2) Prefill z parametrów URL → widok + hidden inputs
+    const MAP = {
+      "entry.1713595308": ["idAkt"],     // ID_Aktualizacja
+      "entry.1276633088": ["firma","inpFirma"], // Firma
+      "entry.1492857322": ["obiekt","inpObiekt"], // Obiekt
+      "entry.1906223239": ["osoba","inpOsoba"],   // Osoba kontaktowa
+      "entry.510307459" : ["email","inpEmail"]    // Adres e-mail
+    };
+
+    function getParam(name){ return new URLSearchParams(location.search).get(name) || ""; }
+
+    (function prefill(){
+      for (const entry of Object.keys(MAP)) {
+        const val = getParam(entry);
+        if (!val) continue;
+
+        for (const id of MAP[entry]) {
+          const el = document.getElementById(id);
+          if (!el) continue;
+
+          if (id === "email") {
+            const a = document.getElementById("emailLink");
+            if (a) { a.textContent = val; a.href = `mailto:${val}`; }
+            else   { el.textContent = val; }
+          } else if (el.tagName === "INPUT") {
+            el.value = val;
+          } else {
+            el.textContent = val;
+          }
+        }
+      }
+    })();
+
+    // 3) Obsługa sukces/błąd jak w pierwotnej wersji (iframe load = sukces)
+    (function attachNoReloadSubmit(){
+      const form   = document.getElementById('confForm');
+      const btn    = document.getElementById('btnConfirm');
+      const okBox  = document.getElementById('alert-ok');
+      const errBox = document.getElementById('alert-err');
+      const iframe = document.getElementById('hidden_iframe');
+
+      let submitted = false;
+
+      form.addEventListener('submit', () => {
+        submitted = true;
+        btn.disabled = true;
+        okBox.style.display  = 'none';
+        errBox.style.display = 'none';
+        // jeśli Google Forms zredirectuje w iframe, „load” się wywoła
+      });
+
+      iframe.addEventListener('load', () => {
+        if (!submitted) return;
+        submitted = false;
+        okBox.style.display  = 'block';
+        errBox.style.display = 'none';
+        // (opcjonalnie) odblokuj przycisk jeśli chcesz pozwolić na ponowną wysyłkę:
+        // btn.disabled = false;
+      });
+
+      // Awaryjnie pokaż błąd, gdyby Google nie załadował odpowiedzi do iframe
+      form.addEventListener('submit', () => {
+        setTimeout(() => {
+          if (okBox.style.display !== 'block') {
+            errBox.style.display = 'block';
+          }
+        }, 8000);
+      });
+    })();
+  </script>
 </body>
 </html>
