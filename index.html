@@ -1,23 +1,158 @@
 <!DOCTYPE html>
 <html lang="pl">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>POTWIERDZENIE</title>
-  <!-- Biblioteka stylów -->
+
+  <!-- Twoja biblioteka -->
   <link rel="stylesheet" href="https://okeciepark-dotcom.github.io/library/style.css">
   <script defer src="https://okeciepark-dotcom.github.io/library/config.js"></script>
+
+  <style>
+    .alert {display:none; margin-top:16px; padding:12px; border-radius:10px; border:1px solid #ddd}
+    .alert--ok {background:#e8f5e9}
+    .alert--err {background:#ffebee}
+    .hide {display:none}
+  </style>
+
   <script>
-    document.addEventListener("DOMContentLoaded", () => {
+    // ======= USTAW TO: FORM_ID Twojego Google Form =======
+    const FORM_ID = "15flx1SBwjdQnomWlGlsC0K-Tx1cgs59ksvwd49aI5-A";
+    // ================================================
+
+    // Mapowanie entry.* -> id elementu w HTML (do wyświetlenia)
+    const VIEW_MAP = {
+      "entry.1276633088": "firma",  // Firma
+      "entry.1492857322": "obiekt", // Obiekt
+      "entry.1906223239": "osoba",  // Osoba kontaktowa
+      "entry.510307459" : "email",  // Adres e-mail
+      "entry.1713595308": "aktId"   // ID_Aktualizacja (ukryte)
+    };
+
+    function fillFromUrl() {
+      const params = new URLSearchParams(window.location.search);
+      for (const [entry, elId] of Object.entries(VIEW_MAP)) {
+        const val = params.get(entry);
+        if (!val) continue;
+        const el = document.getElementById(elId);
+        if (!el) continue;
+        if (elId === "email") {
+          const a = document.getElementById("emailLink");
+          if (a) { a.textContent = val; a.href = `mailto:${val}`; }
+          else   { el.textContent = val; }
+        } else if (el.tagName === "INPUT") {
+          el.value = val; // dla ukrytego ID
+        } else {
+          el.textContent = val;
+        }
+      }
+    }
+
+    async function submitToGoogleForms(payload) {
+      // Wysyłamy jak z formularza: application/x-www-form-urlencoded
+      const endpoint = `https://docs.google.com/forms/d/e/${FORM_ID}/formResponse`;
+      const body = new URLSearchParams(payload).toString();
+
+      // Uwaga: Google Forms ma CORS; używamy no-cors (brak czytelnej odpowiedzi to normalne).
+      // Po udanej wysyłce i tak pokazujemy potwierdzenie.
+      await fetch(endpoint, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body
+      });
+      // Jeśli fetch się nie wywali wyjątkiem w JS, traktujemy jako sukces.
+    }
+
+    function buildPayloadFromUrl() {
+      const params = new URLSearchParams(window.location.search);
+
+      // Zbierz dokładnie te entry.*, które chcesz wysłać
+      const entries = [
+        "entry.1276633088", // Firma
+        "entry.1492857322", // Obiekt
+        "entry.1906223239", // Osoba kontaktowa
+        "entry.510307459",  // Adres e-mail
+        "entry.1713595308"  // ID_Aktualizacja
+      ];
+
+      const payload = {};
+      for (const key of entries) {
+        const v = params.get(key);
+        if (v !== null) payload[key] = v;
+      }
+
+      // (opcjonalnie) możesz dodać submit param, ale nie jest wymagany:
+      // payload["submit"] = "Submit";
+
+      return payload;
+    }
+
+    function setLogoAndFooter() {
       const cfg = window.OP_CONFIG || {};
-      // Logo
       const logo = document.getElementById("op-logo");
       if (logo && cfg.logoUrl) logo.src = cfg.logoUrl;
-      // Stopka
-      document.getElementById("op-org").textContent   = cfg.orgName;
-      document.getElementById("op-mail").textContent  = cfg.orgEmail;
-      document.getElementById("op-mail").href         = "mailto:" + cfg.orgEmail;
-      document.getElementById("op-privacy").href      = cfg.privacyUrl;
+      const org  = document.getElementById("op-org");
+      const mail = document.getElementById("op-mail");
+      const priv = document.getElementById("op-privacy");
+      if (org && cfg.orgName) org.textContent = cfg.orgName;
+      if (mail && cfg.orgEmail) { mail.textContent = cfg.orgEmail; mail.href = `mailto:${cfg.orgEmail}`; }
+      if (priv && cfg.privacyUrl) priv.href = cfg.privacyUrl;
+
       document.documentElement.classList.add("ready");
+    }
+
+    function showAlert(ok, text) {
+      const okBox  = document.getElementById("alert-ok");
+      const errBox = document.getElementById("alert-err");
+      if (ok) {
+        if (errBox) errBox.style.display = "none";
+        if (okBox)  { okBox.textContent = text; okBox.style.display = "block"; }
+      } else {
+        if (okBox)  okBox.style.display = "none";
+        if (errBox) { errBox.textContent = text; errBox.style.display = "block"; }
+      }
+    }
+
+    function disableButton(disabled) {
+      const btn = document.getElementById("btn-confirm");
+      if (!btn) return;
+      btn.disabled = disabled;
+      btn.textContent = disabled ? "Wysyłanie..." : "Potwierdź";
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      setLogoAndFooter();
+      fillFromUrl();
+
+      const btn = document.getElementById("btn-confirm");
+      btn?.addEventListener("click", async () => {
+        // Walidacja minimalna
+        if (FORM_ID === "WSTAW_TUTAJ_SWOJ_FORM_ID") {
+          showAlert(false, "Brak FORM_ID. Uzupełnij identyfikator formularza Google w kodzie.");
+          return;
+        }
+
+        const payload = buildPayloadFromUrl();
+        // Sprawdź wymagane pola (przykładowo firma, obiekt, email)
+        if (!payload["entry.1276633088"] || !payload["entry.1492857322"] || !payload["entry.510307459"]) {
+          showAlert(false, "Brak wymaganych danych w linku. Upewnij się, że używasz poprawnego URL.");
+          return;
+        }
+
+        try {
+          disableButton(true);
+          await submitToGoogleForms(payload);
+          showAlert(true, "Dziękujemy! Potwierdzenie zostało zapisane.");
+          // (opcjonalnie) zablokuj ponowną wysyłkę:
+          // document.getElementById("btn-confirm").classList.add("hide");
+        } catch (e) {
+          showAlert(false, "Nie udało się wysłać potwierdzenia. Spróbuj ponownie.");
+          console.error(e);
+        } finally {
+          disableButton(false);
+        }
+      });
     });
   </script>
 </head>
@@ -28,26 +163,41 @@
     <img id="op-logo" class="header__logo" alt="Logo Okęcie Park" data-hide-until-ready>
   </header>
 
-  <!-- Treść główna -->
+  <!-- Treść -->
   <main>
     <div class="form-card">
       <h1>POTWIERDZENIE</h1>
+
       <p>
-        Potwierdzasz, że lista kontaktów firmy <strong>Firma</strong>  
-        dla obiektu <strong>Obiekt</strong> jest aktualna.  
+        Potwierdzasz, że lista kontaktów firmy
+        <strong id="firma">Firma</strong>
+        dla obiektu
+        <strong id="obiekt">Obiekt</strong>
+        jest aktualna.
       </p>
-      <p>
-        Osoba pierwszego kontaktu: <strong>Osoba kontaktowa</strong><br>
-        e-mail: <strong>Adres e-mail</strong>
+
+      <p style="margin-top:10px">
+        Osoba pierwszego kontaktu:
+        <strong id="osoba">Osoba kontaktowa</strong><br>
+        e-mail:
+        <strong id="email"><a id="emailLink" href="#">Adres e-mail</a></strong>
       </p>
-      <button type="submit">Potwierdź</button>
+
+      <!-- Ukryte pole na ID aktualizacji (jeśli potrzebujesz gdzieś użyć) -->
+      <input id="aktId" type="hidden" />
+
+      <button id="btn-confirm" type="button" style="margin-top:20px">Potwierdź</button>
+
+      <!-- Komunikaty -->
+      <div id="alert-ok"  class="alert alert--ok"  role="status" aria-live="polite"></div>
+      <div id="alert-err" class="alert alert--err" role="alert"></div>
     </div>
   </main>
 
   <!-- Stopka -->
   <footer data-hide-until-ready>
-    <p>© <span id="op-org"></span></p>
-    <p>Kontakt: <a id="op-mail" href="#"></a></p>
+    <p>© <span id="op-org">Okęcie Park</span></p>
+    <p>Kontakt: <a id="op-mail" href="#">email</a></p>
     <p><a id="op-privacy" href="#" target="_blank" rel="noopener">Polityka prywatności</a></p>
   </footer>
 
